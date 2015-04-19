@@ -11,6 +11,8 @@ using Google.Apis.Services;
 using Google.Apis.Auth.OAuth2;
 using System.Security.Cryptography.X509Certificates;
 
+using ClientPipe;
+
 namespace CalendarPull
 {
     class Authentication
@@ -330,19 +332,87 @@ namespace CalendarPull
 
     class Program
     {
+        static AutoResetEvent _evtDone = new AutoResetEvent(false);
+        public static void uploadDoneCallback(Exception exp)
+        {
+
+            string msg;
+
+            if (exp == null)
+                msg = "Upload Complete no errors";
+            else
+                msg = "Upload Failure:" + exp.Message;
+
+            Console.WriteLine(msg);
+            _evtDone.Set();
+
+        }
+
+        public static void ProgressCallback(long l)
+        {
+            int newValue = (int)l;
+            Console.Write(".");
+                  
+        }
         static void Main(string[] args)
         {
-            
-            string SERVICE_ACCOUNT_EMAIL = "414558114750-vj3ttcv5n87sol20e3lshtvuft5p0b3l@developer.gserviceaccount.com";
-            string SERVICE_ACCOUNT_KEYFILE = @"rivervalleycommunity.p12";
 
-            DateTime now = DateTime.Now.AddDays(-30);
-            DateTime nowEnd = DateTime.Now.AddYears(1);
+            try
+            {
+                string SERVICE_ACCOUNT_EMAIL = "414558114750-vj3ttcv5n87sol20e3lshtvuft5p0b3l@developer.gserviceaccount.com";
+                string SERVICE_ACCOUNT_KEYFILE = @"rivervalleycommunity.p12";
 
-            List<CalEvent> calevents = GoogleAPI.GetCalendarEvents3(SERVICE_ACCOUNT_EMAIL, SERVICE_ACCOUNT_KEYFILE, "rivervalleycommunity@gmail.com", now, nowEnd);
+                DateTime now = DateTime.Now.AddDays(-30);
+                DateTime nowEnd = DateTime.Now.AddYears(1);
 
-            File.WriteAllText("RiverValleyCalEvents.xml", XMLUtil.Serialize<List<CalEvent>>(calevents));
+                Console.Write("Geting calendar events...");
 
+                List<CalEvent> calevents = GoogleAPI.GetCalendarEvents3(SERVICE_ACCOUNT_EMAIL, SERVICE_ACCOUNT_KEYFILE, "rivervalleycommunity@gmail.com", now, nowEnd);
+
+                File.WriteAllText("RiverValleyCalEvents.xml", XMLUtil.Serialize<List<CalEvent>>(calevents));
+                Console.WriteLine("done!");
+
+                Console.Write("Uploading events...");
+
+                BinaryTransporter _binaryTransportChannel = null;
+                string URL = "http://rivervalleycommunity.org/Receiver.aspx";
+
+                FileInfo fi = new FileInfo("RiverValleyCalEvents.xml");
+
+                string _guid = "";
+                _binaryTransportChannel = new ClientPipe.BinaryTransporter(URL,
+                        null,
+                        _guid,
+                        "123456",
+                        false);
+
+                string TargetFolder = "~/rivervalley/events";
+
+                _guid = _binaryTransportChannel.RequestUploadStart(TargetFolder);
+
+                _binaryTransportChannel.SessionID = _guid;
+
+                Console.WriteLine("Upload session is:" + _guid);
+
+
+                _binaryTransportChannel.BeginSendFile(fi.FullName,
+                        TargetFolder,
+                        fi.Name,
+                        uploadDoneCallback, ProgressCallback);
+
+
+                _evtDone.WaitOne();
+
+                Console.WriteLine("done!");
+
+                Console.WriteLine("Operation Complete!");
+            }
+            catch (Exception exp)
+            {
+
+                Console.WriteLine("Operation failed!");
+                Console.WriteLine(exp.Message);
+            }
         }
     }
 }
