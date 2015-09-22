@@ -155,13 +155,15 @@ namespace CalendarPull
 
                 CalEvent myevent = new CalEvent();
 
+                
+
                 if ((null == entry.Start.DateTime) || (null == entry.End.DateTime))
                 {
                     myevent.IsAllDayEvent = true;
-                    myevent.StartTime = DateTime.Parse(entry.Start.Date);
+                    myevent.StartTime = DateTime.Parse(entry.Start.Date).AddHours(-1);
                     myevent.StartDate = DateTime.Parse(entry.Start.Date);
 
-                    myevent.EndTime = DateTime.Parse(entry.End.Date);
+                    myevent.EndTime = DateTime.Parse(entry.End.Date).AddHours(-1);
                     myevent.EndDate = DateTime.Parse(entry.End.Date);
 
 
@@ -169,16 +171,17 @@ namespace CalendarPull
                 else
                 {
                     myevent.IsAllDayEvent = false;
+                    //Fix time zone we want to display cst but server is est by .AddHours(-1)
 
                     if (null != entry.Start.DateTime)
                     {
-                        myevent.StartTime = (DateTime)entry.Start.DateTime;
-                        myevent.StartDate = (DateTime)entry.Start.DateTime;
+                        myevent.StartTime = ((DateTime)entry.Start.DateTime).AddHours(-1);
+                        myevent.StartDate = ((DateTime)entry.Start.DateTime);
                     }
                     if (null != entry.End.DateTime)
                     {
-                        myevent.EndTime = (DateTime)entry.End.DateTime;
-                        myevent.EndDate = (DateTime)entry.End.DateTime;
+                        myevent.EndTime = ((DateTime)entry.End.DateTime).AddHours(-1);
+                        myevent.EndDate = ((DateTime)entry.End.DateTime);
                     }
 
 
